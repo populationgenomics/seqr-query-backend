@@ -1,0 +1,112 @@
+# Corresponding BigQuery SQL query:
+#
+# SELECT
+#   xpos,
+#   variantId
+# FROM
+#   `seqr-308602.na12878_trio.parquet_subset`
+# WHERE
+#   ((AF IS NULL)
+#     OR (AF <= 0.9))
+#   AND (clinvar_clinical_significance IS NOT NULL)
+#   AND ((NOT 'NA12891' IN UNNEST(samples_no_call.list.element)
+#       AND 'NA12891' IN UNNEST(samples_num_alt_2.list.element))
+#     AND ('NA12878' IN UNNEST(samples_num_alt_2.list.element)));
+arrow_urls: "file://testdata/part-00000-na12878-trio.zstd.arrow"
+arrow_urls: "file://testdata/part-00001-na12878-trio.zstd.arrow"
+arrow_urls: "file://testdata/part-00002-na12878-trio.zstd.arrow"
+projection_columns: "xpos"
+projection_columns: "variantId"
+filter_expression {
+  call {
+    function_name: "and"
+    arguments {
+      call {
+        function_name: "and"
+        arguments {
+          call {
+            function_name: "or"
+            arguments {
+              call {
+                function_name: "is_null"
+                arguments {
+                  column: "AF"
+                }
+              }
+            }
+            arguments {
+              call {
+                function_name: "less"
+                arguments {
+                  column: "AF"
+                }
+                arguments {
+                  literal {
+                    float_value: 0.9
+                  }
+                }
+              }
+            }
+          }
+        }
+        arguments {
+          call {
+            function_name: "is_valid"
+            arguments {
+              column: "clinvar_clinical_significance"
+            }
+          }
+        }
+      }
+    }
+    arguments {
+      call {
+        function_name: "and"
+        arguments {
+          call {
+            function_name: "and"
+            arguments {
+              call {
+                function_name: "invert"
+                arguments {
+                  call {
+                    function_name: "string_list_contains_any"
+                    arguments {
+                      column: "samples_no_call"
+                    }
+                    set_lookup_options {
+                      values: "NA12891"
+                    }
+                  }
+                }
+              }
+            }
+            arguments {
+              call {
+                function_name: "string_list_contains_any"
+                arguments {
+                  column: "samples_num_alt_2"
+                }
+                set_lookup_options {
+                  values: "NA12891"
+                }
+              }
+            }
+          }
+        }
+        arguments {
+          call {
+            function_name: "string_list_contains_any"
+            arguments {
+              column: "samples_num_alt_2"
+            }
+            set_lookup_options {
+              values: "NA12878"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+max_rows: 10000
