@@ -1,6 +1,7 @@
 #include "server.h"
 
 #include <absl/base/thread_annotations.h>
+#include <absl/container/flat_hash_map.h>
 #include <absl/flags/flag.h>
 #include <absl/status/statusor.h>
 #include <absl/strings/str_cat.h>
@@ -203,16 +204,52 @@ absl::StatusOr<ScannerOptions> BuildScannerOptions(
                         static_cast<size_t>(request.max_rows())};
 }
 
+class UrlCache {
+ public:
+  explicit UrlCache(const UrlReader& url_reader) : url_reader_(url_reader) {}
+
+  absl::StatusOr<std::shared_ptr<std::vector<char>>> Get(
+      const std::string_view url) {
+    {
+      const absl::ReaderMutexLock lock(&mu_);
+      const auto iter = cache_.find(url);
+      if (iter != cache_.end()) {
+        return iter->second;
+      }
+    }  // Unlock.
+
+    // Read outside of the lock, as this is slow.
+    const auto data = url_reader_.Read(url);
+    if (!data.ok()) {
+      return data.status();
+    }
+
+    // TODO(@lgruen): implement eviction
+
+    auto entry = std::make_shared<std::vector<char>>(*std::move(data));
+
+    {
+      const absl::MutexLock lock(&mu_);
+      return cache_[std::string(url)] = std::move(entry);
+    }  // Unlock.
+  }
+
+ private:
+  const UrlReader& url_reader_;
+  absl::flat_hash_map<std::string, std::shared_ptr<std::vector<char>>> cache_
+      ABSL_GUARDED_BY(mu_);
+  absl::Mutex mu_;
+};
+
 absl::StatusOr<arrow::RecordBatchVector> ProcessArrowUrl(
-    const UrlReader& url_reader, const std::string_view url,
-    const ScannerOptions& scanner_options,
-    std::atomic<size_t>* const num_rows) {
+    const std::string_view url, const ScannerOptions& scanner_options,
+    UrlCache* const url_cache, std::atomic<size_t>* const num_rows) {
   // Early cancellation.
   if (*num_rows > scanner_options.max_rows) {
     return MaxRowsExceededError(scanner_options.max_rows);
   }
 
-  const auto data = url_reader.Read(url);
+  const auto data = url_cache->Get(url);
   if (!data.ok()) {
     return absl::InvalidArgumentError(
         absl::StrCat("Failed to read ", url, ": ", data.status().message()));
@@ -222,7 +259,7 @@ absl::StatusOr<arrow::RecordBatchVector> ProcessArrowUrl(
   // We parallelize over URLs already, no need for nested parallelism.
   ipc_read_options.use_threads = false;
 
-  arrow::io::BufferReader buffer_reader{{data->data(), data->size()}};
+  arrow::io::BufferReader buffer_reader{{(*data)->data(), (*data)->size()}};
   auto record_batch_file_reader =
       arrow::ipc::RecordBatchFileReader::Open(&buffer_reader, ipc_read_options);
   if (!record_batch_file_reader.ok()) {
@@ -306,7 +343,7 @@ absl::StatusOr<arrow::RecordBatchVector> ProcessArrowUrl(
 class QueryServiceImpl final : public seqr::QueryService::Service {
  public:
   explicit QueryServiceImpl(const UrlReader& url_reader)
-      : url_reader_(url_reader) {}
+      : url_cache_(url_reader) {}
 
  private:
   grpc::Status Query(grpc::ServerContext* const context,
@@ -327,11 +364,11 @@ class QueryServiceImpl final : public seqr::QueryService::Service {
     std::atomic<size_t> num_rows = 0;  // Number of filtered rows across URLs.
     absl::BlockingCounter blocking_counter(num_arrow_urls);
     for (size_t i = 0; i < num_arrow_urls; ++i) {
-      thread_pool_.Schedule([&url_reader = url_reader_,
+      thread_pool_.Schedule([&url_cache = url_cache_,
                              &url = request->arrow_urls(i),
                              &result = partial_results[i], &scanner_options,
                              &num_rows, &blocking_counter] {
-        result = ProcessArrowUrl(url_reader, url, *scanner_options, &num_rows);
+        result = ProcessArrowUrl(url, *scanner_options, &url_cache, &num_rows);
         blocking_counter.DecrementCount();
       });
     }
@@ -410,7 +447,7 @@ class QueryServiceImpl final : public seqr::QueryService::Service {
   }
 
   ThreadPool thread_pool_{absl::GetFlag(FLAGS_num_threads)};
-  const UrlReader& url_reader_;
+  UrlCache url_cache_;
 };
 
 absl::Status RegisterArrowComputeFunctions() {
