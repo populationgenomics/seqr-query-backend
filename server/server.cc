@@ -305,7 +305,8 @@ absl::StatusOr<arrow::RecordBatchVector> ProcessArrowUrl(
 
 class QueryServiceImpl final : public seqr::QueryService::Service {
  public:
-  QueryServiceImpl(const UrlReader& url_reader) : url_reader_(url_reader) {}
+  explicit QueryServiceImpl(const UrlReader& url_reader)
+      : url_reader_(url_reader) {}
 
  private:
   grpc::Status Query(grpc::ServerContext* const context,
@@ -424,7 +425,7 @@ absl::Status RegisterArrowComputeFunctions() {
 
 class GrpcServerImpl : public GrpcServer {
  public:
-  GrpcServerImpl(const UrlReader& url_reader)
+  explicit GrpcServerImpl(const UrlReader& url_reader)
       : query_service_impl(url_reader) {}
 
   // The server does not take ownership of the services, which is why we keep

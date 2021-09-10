@@ -31,15 +31,16 @@ def main(query_text_proto_file):
     print(f'Number of rows: {response.num_rows}')
     print(f'Serialized size: {len(response.record_batches)} bytes')
 
-    start_time = time.time()
-    buffer = pyarrow.py_buffer(response.record_batches)
-    table = pyarrow.ipc.RecordBatchFileReader(buffer).read_all()
-    end_time = time.time()
-    print(f'Table deserialization took {math.ceil(1000 * (end_time - start_time))}ms')
-
-    assert table.num_rows == response.num_rows
+    if response.num_rows > 0:
+        start_time = time.time()
+        buffer = pyarrow.py_buffer(response.record_batches)
+        table = pyarrow.ipc.RecordBatchFileReader(buffer).read_all()
+        end_time = time.time()
+        print(
+            f'Table deserialization took {math.ceil(1000 * (end_time - start_time))}ms'
+        )
+        assert table.num_rows == response.num_rows
 
 
 if __name__ == '__main__':
     main()
-
