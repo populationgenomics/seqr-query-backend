@@ -1,0 +1,50 @@
+name: Build and deploy
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+
+    env:
+      CLOUDSDK_CORE_DISABLE_PROMPTS: 1
+      DOCKER_IMAGE: australia-southeast1-docker.pkg.dev/seqr-308602/seqr-project/seqr-query-backend
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: gcloud setup
+        uses: google-github-actions/setup-gcloud@master
+        with:
+          project_id: seqr-308602
+          service_account_key: ${{ secrets.GCP_DEPLOY_KEY }}
+
+      - name: gcloud docker auth
+        run: gcloud auth configure-docker australia-southeast1-docker.pkg.dev
+      
+      - name: set deployment type
+        run: |
+          if [[ $GITHUB_REF == 'refs/heads/main' ]]; then
+            echo DEPLOYMENT_TYPE=prod >> $GITHUB_ENV
+          else
+            echo DEPLOYMENT_TYPE=dev >> $GITHUB_ENV
+          fi
+
+      - name: pull base image
+        run: docker pull $DOCKER_IMAGE-base:$DEPLOYMENT_TYPE || true
+
+      - name: build base image
+        run: docker build --tag=$DOCKER_IMAGE-base:${{ github.sha }} --tag=$DOCKER_IMAGE-base:$DEPLOYMENT_TYPE --cache-from=$DOCKER_IMAGE-base:$DEPLOYMENT_TYPE --target=base .
+
+      - name: build and test deployment image
+        run: docker build --tag=$DOCKER_IMAGE:${{ github.sha }} --tag=$DOCKER_IMAGE:$DEPLOYMENT_TYPE --cache-from=$DOCKER_IMAGE-base:$DEPLOYMENT_TYPE .
+      
+      - name: push base image
+        run: docker push --all-tags $DOCKER_IMAGE-base
+
+      - name: push deployment image
+        run: docker push --all-tags $DOCKER_IMAGE

@@ -1,0 +1,19 @@
+arrow_urls: "gs://cpg-seqr-test/seqr_table_conversion/2021-08-26_22-20-02/annotated_ht.arrow/part-00000-2d5ce851-c379-4eab-94ba-1e51f996109b-c000.zstd.arrow"
+arrow_urls: "gs://cpg-seqr-test/seqr_table_conversion/2021-08-26_22-20-02/annotated_ht.arrow/part-00001-2d5ce851-c379-4eab-94ba-1e51f996109b-c000.zstd.arrow"
+arrow_urls: "gs://cpg-seqr-test/seqr_table_conversion/2021-08-26_22-20-02/annotated_ht.arrow/part-00002-2d5ce851-c379-4eab-94ba-1e51f996109b-c000.zstd.arrow"
+projection_columns: "xpos"
+projection_columns: "variantId"
+filter_expression {
+  call {
+    function_name: "less"
+    arguments {
+      column: "gnomad_exomes_AF"
+    }
+    arguments {
+      literal {
+        float_value: 0.0001
+      }
+    }
+  }
+}
+max_rows: 10000

@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package seqr;
+
+service QueryService {
+  rpc Query(QueryRequest) returns (QueryResponse) {}
+}
+
+message QueryRequest {
+  // A list of URLs to Arrow files (e.g. on GCS) that should be scanned ("FROM"
+  // in SQL).
+  repeated string arrow_urls = 1;
+
+  // Which columns to return ("SELECT" in SQL).
+  repeated string projection_columns = 2;
+
+  // This follows the Apache Arrow compute expression representation.
+  message Expression {
+    oneof type {
+      string column = 1;   // Reference to a column by name.
+      Literal literal = 2; // A literal value.
+      Call call = 3;       // A function call.
+    }
+
+    message Literal {
+      oneof type {
+        bool bool_value = 1;
+        int32 int32_value = 2;
+        int64 int64_value = 3;
+        float float_value = 4;
+        double double_value = 5;
+        string string_value = 6;
+      }
+    }
+
+    message Call {
+      // See https://arrow.apache.org/docs/cpp/compute.html for available
+      // functions.
+      //
+      // The following non-standard functions are available:
+      // - string_list_contains_any: given a List<string> array and a set of
+      //   strings to look up (see SetLookupOptions), outputs true iff the list
+      //   input element contains a value that's equal to one of the elements in
+      //   the set of strings to look up. This can be used to implement
+      //   Elasticsearch's "terms".
+      string function_name = 1;
+
+      // The number of arguments depends on the function.
+      repeated Expression arguments = 2;
+
+      // Some functions take additional options.
+      oneof options { SetLookupOptions set_lookup_options = 3; }
+    }
+
+    message SetLookupOptions {
+      // The set of strings to compare against.
+      repeated string values = 1;
+    }
+  }
+
+  // The expression to filter by ("WHERE" in SQL).
+  Expression filter_expression = 3;
+
+  // Cancel the request if the number of result rows exceeds this value.
+  int32 max_rows = 4;
+}
+
+message QueryResponse {
+  // The number of rows contained in the result table.
+  int32 num_rows = 1;
+
+  // Serialized RecordBatches, in Apache Arrow IPC format.
+  bytes record_batches = 2;
+}
