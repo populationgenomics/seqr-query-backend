@@ -1,0 +1,269 @@
+{
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "bool": {
+            "should": [
+              {
+                "bool": {
+                  "must_not": [
+                    {
+                      "exists": {
+                        "field": "AF"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "range": {
+                  "AF": {
+                    "lte": 0.001
+                  }
+                }
+              }
+            ],
+            "must": [
+              {
+                "bool": {
+                  "should": [
+                    {
+                      "bool": {
+                        "must_not": [
+                          {
+                            "exists": {
+                              "field": "exac_AF_POPMAX"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "range": {
+                        "exac_AF_POPMAX": {
+                          "lte": 0.0005
+                        }
+                      }
+                    }
+                  ],
+                  "minimum_should_match": 1
+                }
+              },
+              {
+                "bool": {
+                  "should": [
+                    {
+                      "bool": {
+                        "must_not": [
+                          {
+                            "exists": {
+                              "field": "g1k_POPMAX_AF"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "range": {
+                        "g1k_POPMAX_AF": {
+                          "lte": 0.0005
+                        }
+                      }
+                    }
+                  ],
+                  "minimum_should_match": 1
+                }
+              },
+              {
+                "bool": {
+                  "should": [
+                    {
+                      "bool": {
+                        "must_not": [
+                          {
+                            "exists": {
+                              "field": "gnomad_exomes_FAF_AF"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "range": {
+                        "gnomad_exomes_FAF_AF": {
+                          "lte": 0.0005
+                        }
+                      }
+                    }
+                  ],
+                  "minimum_should_match": 1
+                }
+              },
+              {
+                "bool": {
+                  "should": [
+                    {
+                      "bool": {
+                        "must_not": [
+                          {
+                            "exists": {
+                              "field": "gnomad_genomes_FAF_AF"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "range": {
+                        "gnomad_genomes_FAF_AF": {
+                          "lte": 0.0005
+                        }
+                      }
+                    }
+                  ],
+                  "minimum_should_match": 1
+                }
+              },
+              {
+                "bool": {
+                  "should": [
+                    {
+                      "bool": {
+                        "must_not": [
+                          {
+                            "exists": {
+                              "field": "sf"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "range": {
+                        "sf": {
+                          "lte": 0.001
+                        }
+                      }
+                    }
+                  ],
+                  "minimum_should_match": 1
+                }
+              },
+              {
+                "bool": {
+                  "should": [
+                    {
+                      "bool": {
+                        "must_not": [
+                          {
+                            "exists": {
+                              "field": "topmed_AF"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "range": {
+                        "topmed_AF": {
+                          "lte": 0.0005
+                        }
+                      }
+                    }
+                  ],
+                  "minimum_should_match": 1
+                }
+              }
+            ],
+            "minimum_should_match": 1
+          }
+        },
+        {
+          "terms": {
+            "clinvar_clinical_significance": [
+              "Likely_pathogenic",
+              "Pathogenic",
+              "Pathogenic/Likely_pathogenic"
+            ]
+          }
+        },
+        {
+          "bool": {
+            "must": [
+              {
+                "bool": {
+                  "should": [
+                    {
+                      "bool": {
+                        "must_not": [
+                          {
+                            "term": {
+                              "samples_no_call": "NA12891"
+                            }
+                          },
+                          {
+                            "term": {
+                              "samples_num_alt_2": "NA12891"
+                            }
+                          }
+                        ],
+                        "must": [
+                          {
+                            "term": {
+                              "samples_num_alt_2": "NA12878"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "bool": {
+                        "must": [
+                          {
+                            "match": {
+                              "contig": "X"
+                            }
+                          },
+                          {
+                            "term": {
+                              "samples_num_alt_2": "NA12878"
+                            }
+                          }
+                        ],
+                        "must_not": [
+                          {
+                            "term": {
+                              "samples_no_call": "NA12891"
+                            }
+                          },
+                          {
+                            "term": {
+                              "samples_num_alt_1": "NA12891"
+                            }
+                          },
+                          {
+                            "term": {
+                              "samples_num_alt_2": "NA12891"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            ],
+            "_name": "F000001_trio"
+          }
+        }
+      ]
+    }
+  },
+  "sort": [
+    "xpos",
+    "variantId"
+  ],
+  "from": 0,
+  "size": 100
+}
