@@ -48,3 +48,26 @@ Within the container, run the server in `gdb`:
 ```bash
 gdb /app/build/server/seqr_query_backend
 ```
+
+## Cloud Run deployment
+
+To use the test client with the Cloud Run deployment, either set the
+`GOOGLE_APPLICATION_CREDENTIALS` environment variable or run the client from a Compute
+Engine VM. The associated service account needs to have invoker permissions for the
+Cloud Run deployment.
+
+```bash
+CLOUD_RUN_URL=$(gcloud run services describe seqr-query-backend-dev --platform=managed --region=australia-southeast1 --format='value(status.url)')
+
+cd client
+
+./client_cli.py --query_text_proto_file=example_query.textproto --cloud_run_url=$CLOUD_RUN_URL
+```
+
+For gRPC debugging, the following environment variables are helpful:
+
+```bash
+export GRPC_VERBOSITY=DEBUG
+export GRPC_TRACE=secure_endpoint
+```
+
