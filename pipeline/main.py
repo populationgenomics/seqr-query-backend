@@ -35,7 +35,7 @@ def main(input):
         max_age='4h',
         num_secondary_workers=10,
         packages=['click'],
-        init=['gs://cpg-common-main/references/hail_dataproc/install_common.sh'],
+        init=['gs://cpg-common-main/hail_dataproc/install_common.sh'],
         job_name='MT to Parquet',
     )
 
